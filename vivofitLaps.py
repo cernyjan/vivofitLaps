@@ -24,6 +24,13 @@ def get_date_format(value):
     return datetime(into_int(date[0]), into_int(date[1]), into_int(date[2]), into_int(time[0]), into_int(time[1]), into_int(time[2]))
 
 
+class Lap:
+    def __init__(self, id, time, distance = 1.0):
+        self.id = id
+        self.time = time
+        self.distance = distance
+
+
 class Activity:
 # ./Activities/Activity/Id,Lap/TotalTimeSeconds,DistanceMeters/Track/Trackpoint[]/Time,DistanceMeters
 # TrainingCenterDatabase (real root)
@@ -34,7 +41,6 @@ class Activity:
 # Activity - Lap - Track - Trackpoint ([]) - Time, DistanceMeters
 # Activity - Lap - Creator - Name
 # Activity - Lap - Creator - Version ( - VersionMajor, VersionMinor, BuildMajor, BuildMinor)
-
     def __init__(self, activity_type='Running'):
         self.id = ''
         self.activity_type = activity_type
@@ -42,6 +48,7 @@ class Activity:
         self.total_distance_meters = 0
         self.total_completed_laps = 0
         self.track = None
+        self.laps = []
         self.device_name = ''
         self.device_version = ''
 
@@ -56,24 +63,21 @@ class Activity:
         print(self.total_distance_meters)
         print(self.total_completed_laps)
 
-    def get_lap(self, index, start_datetime, finish_datetime):
-        print("{}.".format(index))
-        print(finish_datetime - start_datetime)
+    def get_lap_time(self, start_datetime, finish_datetime):
+        return (finish_datetime - start_datetime)
 
-    def render_laps(self):
+    def set_laps(self):
         if self.total_distance_meters < 1000:
-            print('1.')
-            print(self.total_distance_meters)
-            print(self.total_time_seconds)
+            self.laps.append(Lap('1.', self.total_time_seconds, self.total_distance_meters))
         else:
             if self.track == None:
-                sys.exit("No valid input data (missing track in tcx file), exiting...")
+                sys.exit("No valid input data (missing track in .tcx file), exiting...")
             else:
                 lap_number = 1
                 start_datetime = get_date_format(activity.id)
                 distance_meters = 0.0
-                track_number = 1
-                track_count = len(self.track)
+                trackpoint_number = 1
+                trackpoint_count = len(self.track)
                 for trackpoint in self.track:
                     distance_meters = into_float(trackpoint[1].text)
                     if distance_meters // 1000 >= lap_number:
@@ -82,14 +86,19 @@ class Activity:
                         #print(finish_datetime)
                         #print(trackpoint[0].text)
                         #print(trackpoint[1].text)
-                        self.get_lap(lap_number, start_datetime, finish_datetime)
+                        self.laps.append(Lap("{}.".format(lap_number), self.get_lap_time(start_datetime, finish_datetime), trackpoint[1].text))
                         start_datetime = finish_datetime
                         lap_number = lap_number + 1
-                    elif track_number == track_count:
+                    elif trackpoint_number == trackpoint_count:
                         finish_datetime = get_date_format(trackpoint[0].text)
-                        self.get_lap(lap_number, start_datetime, finish_datetime)
-                        print(trackpoint[1].text)
-                    track_number = track_number + 1
+                        self.laps.append(Lap("{}.".format(lap_number), self.get_lap_time(start_datetime, finish_datetime), trackpoint[1].text))
+                    trackpoint_number = trackpoint_number + 1
+
+    def render_laps(self):
+        for lap in self.laps:
+            print(lap.id)
+            print(lap.time)
+            print(lap.distance)
     
     
 if __name__ == '__main__':
@@ -110,6 +119,7 @@ if __name__ == '__main__':
     activity.total_distance_meters = into_float(root[0][0][1][1].text)
     activity.set_total_laps()
     activity.track = root[0][0][1][6]
+    activity.set_laps()
     
     activity.render_info()
     activity.render_laps()
