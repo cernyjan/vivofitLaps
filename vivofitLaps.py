@@ -2,6 +2,7 @@ import sys
 import xml.etree.ElementTree as ET
 import datetime
 from datetime import datetime
+import math
 
 
 def into_float(value):
@@ -23,6 +24,17 @@ def get_date_format(value):
     time[2] = head
     return datetime(into_int(date[0]), into_int(date[1]), into_int(date[2]), into_int(time[0]), into_int(time[1]), into_int(time[2]))
 
+def seconds_into_time(seconds): 
+    seconds = seconds % (24 * 3600) 
+    hour = seconds // 3600
+    seconds %= 3600
+    minutes = seconds // 60
+    seconds %= 60   
+    return "{:.0f}:{:.0f}:{:.0f}".format(hour, minutes, seconds)
+
+def meters_into_kilometers(meters): 
+    return math.floor((meters / 1000.0) * 10 ** 2)  / 10 ** 2
+
 
 class Lap:
     def __init__(self, id, time, distance = 1.0):
@@ -32,15 +44,6 @@ class Lap:
 
 
 class Activity:
-# ./Activities/Activity/Id,Lap/TotalTimeSeconds,DistanceMeters/Track/Trackpoint[]/Time,DistanceMeters
-# TrainingCenterDatabase (real root)
-# Activities (= ~root)
-# Activity Sport="Running"
-# Activity - Id (= <Lap StartTime="")
-# Activity - Lap - TotalTimeSeconds, DistanceMeters
-# Activity - Lap - Track - Trackpoint ([]) - Time, DistanceMeters
-# Activity - Lap - Creator - Name
-# Activity - Lap - Creator - Version ( - VersionMajor, VersionMinor, BuildMajor, BuildMinor)
     def __init__(self, activity_type='Running'):
         self.id = ''
         self.activity_type = activity_type
@@ -66,6 +69,9 @@ class Activity:
     def get_lap_time(self, start_datetime, finish_datetime):
         return (finish_datetime - start_datetime)
 
+    def get_rest_distance(self, distance_meters):
+        return math.floor(((self.total_distance_meters / 1000.0) - distance_meters) * 10 ** 2)  / 10 ** 2
+
     def set_laps(self):
         if self.total_distance_meters < 1000:
             self.laps.append(Lap('1.', self.total_time_seconds, self.total_distance_meters))
@@ -76,29 +82,42 @@ class Activity:
                 lap_number = 1
                 start_datetime = get_date_format(activity.id)
                 distance_meters = 0.0
+                finish_distance = distance_meters
                 trackpoint_number = 1
                 trackpoint_count = len(self.track)
                 for trackpoint in self.track:
                     distance_meters = into_float(trackpoint[1].text)
                     if distance_meters // 1000 >= lap_number:
-                        #print(start_datetime)
                         finish_datetime = get_date_format(trackpoint[0].text)
-                        #print(finish_datetime)
-                        #print(trackpoint[0].text)
-                        #print(trackpoint[1].text)
-                        self.laps.append(Lap("{}.".format(lap_number), self.get_lap_time(start_datetime, finish_datetime), trackpoint[1].text))
+                        finish_distance = distance_meters / 1000.0
+                        self.laps.append(Lap("{}.".format(lap_number), self.get_lap_time(start_datetime, finish_datetime)))
                         start_datetime = finish_datetime
                         lap_number = lap_number + 1
                     elif trackpoint_number == trackpoint_count:
                         finish_datetime = get_date_format(trackpoint[0].text)
-                        self.laps.append(Lap("{}.".format(lap_number), self.get_lap_time(start_datetime, finish_datetime), trackpoint[1].text))
+                        self.laps.append(Lap("{}.".format(lap_number), self.get_lap_time(start_datetime, finish_datetime), self.get_rest_distance(finish_distance)))
                     trackpoint_number = trackpoint_number + 1
 
-    def render_laps(self):
+    def render_into_table(self):
+        laps = []
+        times = []
+        distances = []
+        laps.append("{} v{}".format(self.device_name, self.device_version))
+        times.append(seconds_into_time(self.total_time_seconds))
+        distances.append(meters_into_kilometers(self.total_distance_meters))
         for lap in self.laps:
-            print(lap.id)
-            print(lap.time)
-            print(lap.distance)
+            laps.append(lap.id)
+            times.append(lap.time)
+            distances.append(lap.distance)        
+
+        titles = ['Laps', 'Times [h:m:s]', 'Distances [km]']
+        data = [titles] + list(zip(laps, times, distances))
+
+        for i, d in enumerate(data):
+            line = '|'.join(str(x).ljust(20) for x in d)
+            print(line)
+            if i == 0:
+                print('-' * len(line))
     
     
 if __name__ == '__main__':
@@ -121,5 +140,4 @@ if __name__ == '__main__':
     activity.track = root[0][0][1][6]
     activity.set_laps()
     
-    activity.render_info()
-    activity.render_laps()
+    activity.render_into_table()
