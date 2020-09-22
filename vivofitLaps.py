@@ -20,7 +20,7 @@ def into_int(value):
 def get_date_format(value):
     date = value.split('T')[0].split('-')
     time = value.split('T')[1].split('Z')[0].split(':')
-    head, sep, tail = time[2].partition('.')
+    head, _, _ = time[2].partition('.')
     time[2] = head
     return datetime(into_int(date[0]), into_int(date[1]), into_int(date[2]), into_int(time[0]), into_int(time[1]), into_int(time[2]))
 
@@ -30,7 +30,7 @@ def seconds_into_time(seconds):
     seconds %= 3600
     minutes = seconds // 60
     seconds %= 60   
-    return "{:.0f}:{:.0f}:{:.0f}".format(hour, minutes, seconds)
+    return "{:.0f}:{:02.0f}:{:02.0f}".format(hour, minutes, seconds)
 
 def meters_into_kilometers(meters): 
     return math.floor((meters / 1000.0) * 10 ** 2)  / 10 ** 2
@@ -73,13 +73,13 @@ class Activity:
         return math.floor(((self.total_distance_meters / 1000.0) - distance_meters) * 10 ** 2)  / 10 ** 2
 
     def set_laps(self):
+        lap_number = 1
         if self.total_distance_meters < 1000:
-            self.laps.append(Lap('1.', self.total_time_seconds, self.total_distance_meters))
+            self.laps.append(Lap("{}.".format(lap_number), seconds_into_time(self.total_time_seconds), meters_into_kilometers(self.total_distance_meters)))
         else:
             if self.track == None:
                 sys.exit("No valid input data (missing track in .tcx file), exiting...")
             else:
-                lap_number = 1
                 start_datetime = get_date_format(activity.id)
                 distance_meters = 0.0
                 finish_distance = distance_meters
@@ -99,6 +99,7 @@ class Activity:
                     trackpoint_number = trackpoint_number + 1
 
     def render_into_table(self):
+        print('\n')
         laps = []
         times = []
         distances = []
@@ -108,7 +109,7 @@ class Activity:
         for lap in self.laps:
             laps.append(lap.id)
             times.append(lap.time)
-            distances.append(lap.distance)        
+            distances.append("{:.02f}".format(lap.distance))        
 
         titles = ['Laps', 'Times [h:m:s]', 'Distances [km]']
         data = [titles] + list(zip(laps, times, distances))
@@ -141,3 +142,5 @@ if __name__ == '__main__':
     activity.set_laps()
     
     activity.render_into_table()
+
+    input("\n\nPress enter to exit\n")
