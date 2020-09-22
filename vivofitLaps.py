@@ -103,8 +103,8 @@ class Activity:
         times = []
         distances = []
         laps.append("{} v{}".format(self.device_name, self.device_version))
-        times.append(seconds_into_time(self.total_time_seconds))
-        distances.append(meters_into_kilometers(self.total_distance_meters))
+        times.append("{} (total)".format(seconds_into_time(self.total_time_seconds)))
+        distances.append("{} (total)".format(meters_into_kilometers(self.total_distance_meters)))
         for lap in self.laps:
             laps.append(lap.id)
             times.append(lap.time)
