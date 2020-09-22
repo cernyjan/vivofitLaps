@@ -1,5 +1,5 @@
 # vivofitLaps
-python tool for generating of laps from tcx file
+python tool for generating laps per approx 1 km from \*.tcx file from Garmin Connect.
 
 ## Prerequisites
 python3
